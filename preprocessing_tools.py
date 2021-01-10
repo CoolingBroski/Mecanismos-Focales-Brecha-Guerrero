@@ -22,9 +22,6 @@ def read_catalog(catalog):
         data['corr'].append(event[7:])
     return pd.DataFrame(data)
 
-def datetime_to_dotformat(datetime):
-    return str(datetime.year)+'.'+'%02d'%datetime.month+'.'+'%02d'%datetime.day+'.'+'%02d'%datetime.hour+'.'+'%02d'%datetime.minute+'.'+'%02d'%datetime.second
-
 def get_tr_meta(directorio):
     # Usar con algun directorio de traces
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
@@ -49,7 +46,6 @@ def get_tr_meta(directorio):
 
 def get_meta_data(directorio_completo):
     # Solo usar con el directorio completo
-    # Obtiene metadatos de las estaciones
     
     A=obspy.read(directorio_completo+'1S*')
     #B=A.copy()
@@ -61,12 +57,12 @@ def get_meta_data(directorio_completo):
     raw_df = pd.DataFrame(stations)
     return raw_df
 
-def get_tr_meta(directorio_evento):
-    # Usar con algun directorio de traces de un directorio con contenido de un solo evento
+def get_tr_meta(directorio):
+    # Usar con algun directorio de traces
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
     # Este sera antecedente de la base de datos
     
-    A=obspy.read(directorio_evento+'*')
+    A=obspy.read(directorio+'*')
     traces=[]
     trace_stations=[]
     i=0
@@ -100,19 +96,24 @@ def Trim(directorio_completo, directorio_recortado, t0, tf):
         
 
 def Trim_Org(outdir, directorio_completo, t_interval, event_catalog, stations_meta):
-    event_paths = []
-    for i, event in event_catalog.iterrows():
-        event_path = Path(outdir+'/'+datetime_to_dotformat(event.date_time))
-                 
-        event_path.mkdir(parents=True, exist_ok=True)
-        event_paths.append(event_path)
-        
     for i, station_channel in stations_meta.iterrows():
         A=obspy.read(directorio_completo+station_channel.kstnm+'.'+station_channel.kcmpnm)
         for j, event in event_catalog.iterrows():
-            event_path = event_paths[j]
-            path2 = station_channel.kstnm + '.' + station_channel.kcmpnm
+            path = Path(outdir+
+                 '/'+
+                 station_channel.kstnm+
+                 '/'+
+                 station_channel.kcmpnm+
+                 '/')
+            path.mkdir(parents=True, exist_ok=True)
+            path2 = Path(str(event.date_time.year)+
+                 '%02d'%event.date_time.month+
+                 '%02d'%event.date_time.day+
+                 '%02d'%event.date_time.hour+
+                 '%02d'%event.date_time.minute+
+                 '%02d'%event.date_time.second+
+                 '.sac')
             B=A.copy()
             B.trim(starttime=event.date_time, endtime=event.date_time+t_interval)
-            final_path = os.path.join(event_path, path2)
+            final_path = os.path.join(path, path2)
             B[0].write(final_path, format='SAC')
