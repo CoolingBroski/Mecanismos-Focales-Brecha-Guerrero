@@ -61,27 +61,44 @@ def get_meta_data(directorio_completo):
     raw_df = pd.DataFrame(stations)
     return raw_df
 
-def get_tr_meta(directorio_evento):
-    # Usar con algun directorio de traces de un directorio con contenido de un solo evento
+def add_vals_to_dic(dic, vals):
+    for i, key in enumerate(dic.keys()):
+        dic[key].append(vals[i])
+
+def get_tr_meta(directorio_recortado):
+    # Usar con algun directorio producido por Trim_Org()
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
     # Este sera antecedente de la base de datos
     
-    A=obspy.read(directorio_evento+'*')
-    traces=[]
-    trace_stations=[]
-    i=0
-    for tr in A:
-        dic_tr = {'starttime' : tr.stats.starttime, 'endtime' : tr.stats.endtime, 'sampling_rate' : tr.stats.sampling_rate, 'id' : i}
-        traces.append(dic_tr)
-        
-        dic_tr_st = {'station' : tr.stats.station, 'channel' : tr.stats.channel, 'tr_id' : i}
-        trace_stations.append(dic_tr_st)
-        
-        i+=1
-        
-    traces_df = pd.DataFrame(traces)
-    tr_st_df = pd.DataFrame(trace_stations)
-    return traces_df, tr_st_df
+    traces_df = None
+    tr_st_df = None
+    dic_ev={'starttime' : [], 'endtime' : [], 'sampling_rate' : [], 'id' : []}
+    dic_ev_st = {'ev_id' : [], 'st_id' : []}
+    dic_st={'station_channel' : [], 'id' : []}
+    st_count = 0
+    ev_st_count = 0
+    i = 0
+    for root, dirs, files in os.walk(directorio_recortado):
+        if root!=directorio_recortado and root.count('/') == 1:
+            A=obspy.read(root+'/*')
+            for j, tr in enumerate(A):
+                if j == 0:
+                    ev_vals = [tr.stats.starttime,tr.stats.endtime,tr.stats.sampling_rate,i]
+                    add_vals_to_dic(dic_ev, ev_vals)
+                
+                if tr.stats.station + '_' + tr.stats.channel not in dic_st['station_channel']:
+                    st_vals = [tr.stats.station + '_' + tr.stats.channel, st_count]
+                    add_vals_to_dic(dic_st, st_vals)
+                    st_count+=1
+                
+                ev_st_vals = [i, dic_st['station_channel'].index(tr.stats.station + '_' + tr.stats.channel)]
+                add_vals_to_dic(dic_ev_st, ev_st_vals)
+                
+            i+=1
+    ev_df = pd.DataFrame(dic_ev)
+    st_df = pd.DataFrame(dic_st)
+    ev_st_df = pd.DataFrame(dic_ev_st)
+    return ev_df, st_df, ev_st_df
 
 def Trim(directorio_completo, directorio_recortado, t0, tf):
     # t0 y tf son clases obspy.UTCDateTime
