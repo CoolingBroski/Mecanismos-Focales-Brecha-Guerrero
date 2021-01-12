@@ -15,11 +15,11 @@ def read_catalog(catalog):
         date_time = date_str+'T'+time_str
         date_timeUTC = obspy.UTCDateTime(date_time)
         data['date_time'].append(date_timeUTC)
-        data['lat'].append(event[3])
-        data['lon'].append(event[4])
-        data['depth'].append(event[5])
-        data['mag'].append(event[6])
-        data['corr'].append(event[7:])
+        data['lat'].append(float(event[3]))
+        data['lon'].append(float(event[4]))
+        data['depth'].append(float(event[5]))
+        data['mag'].append(float(event[6]))
+        data['corr'].append(list(map(float, event[7:])))
     return pd.DataFrame(data)
 
 def datetime_to_dotformat(datetime):
