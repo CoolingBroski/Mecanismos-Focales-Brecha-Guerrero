@@ -6,7 +6,7 @@ import os
 
 def read_catalog(catalog):
     f = open(catalog, 'r')
-    data = {'date_time' : [], 'lat' : [], 'lon' : [], 'depth' : [], 'mag' : [], 'corr' : []}
+    data = {'date_time' : [], 'lat' : [], 'lon' : [], 'depth' : [], 'mag' : [], 'corr' : [], 'date_time_id' : []}
     stations_meta = []
     for i, line in enumerate(f):
         event = line.split()
@@ -14,6 +14,7 @@ def read_catalog(catalog):
         time_str = event[2]
         date_time = date_str+'T'+time_str
         date_timeUTC = obspy.UTCDateTime(date_time)
+        data['date_time_id'].append(datetime_to_dotformat(date_timeUTC))
         data['date_time'].append(date_timeUTC)
         data['lat'].append(float(event[3]))
         data['lon'].append(float(event[4]))
@@ -23,7 +24,8 @@ def read_catalog(catalog):
     return pd.DataFrame(data)
 
 def datetime_to_dotformat(datetime):
-    return str(datetime.year)+'.'+'%02d'%datetime.month+'.'+'%02d'%datetime.day+'.'+'%02d'%datetime.hour+'.'+'%02d'%datetime.minute+'.'+'%02d'%datetime.second
+    dotformat = str(datetime.year)+'.'+'%02d'%datetime.month+'.'+'%02d'%datetime.day+'.'+'%02d'%datetime.hour+'.'+'%02d'%datetime.minute+'.'+'%02d'%datetime.second
+    return dotformat
 
 def get_tr_meta(directorio):
     # Usar con algun directorio de traces
@@ -59,46 +61,30 @@ def get_meta_data(directorio_completo):
         stations.append(tr.stats.sac)
 
     raw_df = pd.DataFrame(stations)
+    raw_df.to_csv('station.csv')
     return raw_df
 
 def add_vals_to_dic(dic, vals):
     for i, key in enumerate(dic.keys()):
         dic[key].append(vals[i])
 
-def get_tr_meta(directorio_recortado):
-    # Usar con algun directorio producido por Trim_Org()
+def link_ev_st(directorio_recortado):
+    # Usar con algun directorio producido por Trim_Org() y dataframes ev de eventos y st de datos de estaciones
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
     # Este sera antecedente de la base de datos
     
     traces_df = None
     tr_st_df = None
-    dic_ev={'starttime' : [], 'endtime' : [], 'sampling_rate' : [], 'id' : []}
-    dic_ev_st = {'ev_id' : [], 'st_id' : []}
-    dic_st={'station_channel' : [], 'id' : []}
-    st_count = 0
-    ev_st_count = 0
-    i = 0
+    dic_ev_st = {'starttime' : [], 'endtime' : [], 'sampling_rate' : [], 'st' : [], 'ch' : [], 'date_time_id' : []}
+
     for root, dirs, files in os.walk(directorio_recortado):
         if root!=directorio_recortado and root.count('/') == 1:
-            A=obspy.read(root+'/*')
+            A=obspy.read(root+'/1S*')
             for j, tr in enumerate(A):
-                if j == 0:
-                    ev_vals = [tr.stats.starttime,tr.stats.endtime,tr.stats.sampling_rate,i]
-                    add_vals_to_dic(dic_ev, ev_vals)
-                
-                if tr.stats.station + '_' + tr.stats.channel not in dic_st['station_channel']:
-                    st_vals = [tr.stats.station + '_' + tr.stats.channel, st_count]
-                    add_vals_to_dic(dic_st, st_vals)
-                    st_count+=1
-                
-                ev_st_vals = [i, dic_st['station_channel'].index(tr.stats.station + '_' + tr.stats.channel)]
-                add_vals_to_dic(dic_ev_st, ev_st_vals)
-                
-            i+=1
-    ev_df = pd.DataFrame(dic_ev)
-    st_df = pd.DataFrame(dic_st)
+                vals = [tr.stats.starttime, tr.stats.endtime, tr.stats.sampling_rate, tr.stats.sac['kstnm'], tr.stats.sac['kcmpnm'], root.split('/')[-1]]
+                add_vals_to_dic(dic_ev_st, vals)
     ev_st_df = pd.DataFrame(dic_ev_st)
-    return ev_df, st_df, ev_st_df
+    return ev_st_df
 
 def Trim(directorio_completo, directorio_recortado, t0, tf):
     # t0 y tf son clases obspy.UTCDateTime
