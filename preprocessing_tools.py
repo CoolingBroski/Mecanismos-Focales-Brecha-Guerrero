@@ -53,7 +53,7 @@ def get_meta_data(directorio_completo):
     # Solo usar con el directorio completo
     # Obtiene metadatos de las estaciones
     
-    A=obspy.read(directorio_completo+'1S*')
+    A=obspy.read(directorio_completo+'*')
     #B=A.copy()
     stations=[]
     for tr in A:
@@ -79,7 +79,7 @@ def link_ev_st(directorio_recortado):
 
     for root, dirs, files in os.walk(directorio_recortado):
         if root!=directorio_recortado and root.count('/') == 1:
-            A=obspy.read(root+'/1S*')
+            A=obspy.read(root+'/*')
             for j, tr in enumerate(A):
                 vals = [tr.stats.starttime, tr.stats.endtime, tr.stats.sampling_rate, tr.stats.sac['kstnm'], tr.stats.sac['kcmpnm'], root.split('/')[-1]]
                 add_vals_to_dic(dic_ev_st, vals)
