@@ -27,6 +27,19 @@ def datetime_to_dotformat(datetime):
     dotformat = str(datetime.year)+'.'+'%02d'%datetime.month+'.'+'%02d'%datetime.day+'.'+'%02d'%datetime.hour+'.'+'%02d'%datetime.minute+'.'+'%02d'%datetime.second
     return dotformat
 
+def get_valid_sac_files(files):
+    # files es una lista de cadenas de archivos
+    
+    # Devuelve las cadenas de archivos que califican como una observacion SAC valida (formato STA.CHA)
+    
+    matches = []
+    for file in files:
+        match = re.fullmatch(r'[A-Z]+\.[A-Z]+', file)
+        if match:
+            matches.append(file)
+                    
+    return matches
+
 def get_tr_meta(directorio):
     # Usar con algun directorio de traces
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
@@ -73,17 +86,23 @@ def link_ev_st(directorio_recortado):
     # Devuelve dataframe de datos de la grabacion y dataframe de relacion entre estacion-canal y grabacion
     # Este sera antecedente de la base de datos
     
+    # Se asume que el formato de los archivos SAC siempre sera STA.CHA
+    
     traces_df = None
     tr_st_df = None
     dic_ev_st = {'starttime' : [], 'endtime' : [], 'sampling_rate' : [], 'st' : [], 'ch' : [], 'date_time_id' : []}
 
     for root, dirs, files in os.walk(directorio_recortado):
         if root!=directorio_recortado and root.count('/') == 1:
-            A=obspy.read(root+'/*')
-            for j, tr in enumerate(A):
+            
+            matches = get_valid_sac_files(files)
+                
+            for j, file in enumerate(matches):
+                tr = obspy.read(root + '/' + file)[0]
                 vals = [tr.stats.starttime, tr.stats.endtime, tr.stats.sampling_rate, tr.stats.sac['kstnm'], tr.stats.sac['kcmpnm'], root.split('/')[-1]]
                 add_vals_to_dic(dic_ev_st, vals)
     ev_st_df = pd.DataFrame(dic_ev_st)
+    ev_st_df.set_index(['date_time_id', 'st', 'ch'])
     return ev_st_df
 
 def Trim(directorio_completo, directorio_recortado, t0, tf):
