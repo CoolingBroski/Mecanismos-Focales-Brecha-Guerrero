@@ -19,8 +19,11 @@ Posterior a ejecutar download_data.sh, se debe ejecutar el script de Python org_
 Orden de ejecución de las libretas de Python (Mientras no se hayan eliminado los datos obtenidos por procesos anteriores, no es necesario ejecutarlos nuevamente si solo se requieren los resultados de cierto proceso intermedio):
 
 Download_Org.ipynb -> Se colocan los sismogramas en Datos_Trim.
+
 Preprocessing.ipynb -> Se elimina la respuesta del instrumento, se rota a RT. Además, se calculan las distancias y azimut para guardar esta información en los archivos SAC y en tablas ev_st. Finalmente, se mantienen únicamente las estaciones dentro del rango de distancias designado.
+
 Synthetics.ipynb -> Se filtran y recortan los sismogramas rotados, se calculan los sismogramas sintéticos y se genera el archivo de configuración inicial de la inversión.
+
 Inversion.ipynb -> Se busca la mejor combinación de estaciones mediante un proceso iterativo de eliminación de estaciones que incremente lo más posible el VR y el porcentaje DC.
 
 El archivo catalogSSN.dat debe contener todos los datos necesarios para cada evento. Este archivo controla aquellos eventos que serán procesados en cada paso del flujo de trabajo.
