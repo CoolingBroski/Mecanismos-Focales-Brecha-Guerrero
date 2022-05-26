@@ -65,15 +65,19 @@ def get_tr_meta(directorio):
 def get_meta_data(directorio_completo):
     # Solo usar con el directorio completo
     # Obtiene metadatos de las estaciones
-    
-    A=obspy.read(directorio_completo+'*')
     #B=A.copy()
+    
     stations=[]
-    for tr in A:
-        #print(tr.stats)
-        stations.append(tr.stats.sac)
+    for file in os.listdir(directorio_completo):
+        path = directorio_completo+file
+        if os.path.isfile(path):
+            try:
+                tr = obspy.read(path)[0]
+                stations.append(tr.stats.sac)
+            except TypeError:
+                pass
 
-    raw_df = pd.DataFrame(stations)
+    raw_df = pd.DataFrame(stations).sort_values(by=['kstnm', 'kcmpnm'], ignore_index=True)
     raw_df.to_csv('station.csv')
     return raw_df
 
@@ -122,6 +126,11 @@ def Trim(directorio_completo, directorio_recortado, t0, tf):
         
 
 def Trim_Org(outdir, directorio_completo, t_interval, event_catalog, stations_meta):
+    # Esta funcion recibe un catalogo para recortar observaciones basandose en un catalogo
+    # Esto es de acuerdo a las especificaciones de la red submarina, la cual incluye varios eventos en un solo archivo
+    
+    # La funcion decide si tiene que recortar el archivo o no basandose en los tiempos de captura y los tiempos de evento
+    
     event_paths = []
     for i, event in event_catalog.iterrows():
         event_path = Path(outdir+'/'+datetime_to_dotformat(event.date_time))
@@ -131,10 +140,14 @@ def Trim_Org(outdir, directorio_completo, t_interval, event_catalog, stations_me
         
     for i, station_channel in stations_meta.iterrows():
         A=obspy.read(directorio_completo+station_channel.kstnm+'.'+station_channel.kcmpnm)
+        start_time = obspy.UTCDateTime(A[0].stats.starttime)
+        end_time = obspy.UTCDateTime(A[0].stats.endtime)
         for j, event in event_catalog.iterrows():
-            event_path = event_paths[j]
-            path2 = station_channel.kstnm + '.' + station_channel.kcmpnm
-            B=A.copy()
-            B.trim(starttime=event.date_time, endtime=event.date_time+t_interval)
-            final_path = os.path.join(event_path, path2)
-            B[0].write(final_path, format='SAC')
+            if event.date_time >= start_time and event.date_time < end_time:
+                event_path = event_paths[j]
+                path2 = station_channel.kstnm + '.' + station_channel.kcmpnm
+                if start_time+t_interval <= end_time:
+                    B=A.copy()
+                    B.trim(starttime=start_time, endtime=start_time+t_interval)
+                    final_path = os.path.join(event_path, path2)
+                    B[0].write(final_path, format='SAC')
